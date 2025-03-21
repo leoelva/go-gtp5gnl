@@ -9,25 +9,38 @@ import (
 )
 
 func usage(prog string) {
-	fmt.Fprintf(os.Stderr, "usage: %v <add|del> <ifname> [--ran]\n", prog)
+	fmt.Fprintf(os.Stderr, "usage: %v <add|del> <ifname> <ipAddr> [ethDev] [--ran]\n", prog)
 }
 
 func main() {
 	prog := path.Base(os.Args[0])
-	if len(os.Args) < 3 {
+	if len(os.Args) < 4 {
 		usage(prog)
 		os.Exit(1)
 	}
 	cmd := os.Args[1]
 	ifname := os.Args[2]
+	ipAddr := os.Args[3]
+	var ethDev string
 	var role int
-	if len(os.Args) > 3 && os.Args[3] == "--ran" {
-		role = 1
+
+	if len(os.Args) == 5 {
+		if os.Args[4] == "--ran" {
+			role = 1
+		} else {
+			ethDev = os.Args[4]
+		}
+	} else if len(os.Args) > 5 {
+		ethDev = os.Args[4]
+		if os.Args[5] == "--ran" {
+			role = 1
+		}
 	}
 
 	switch cmd {
 	case "add":
-		err := linkcmd.CmdAdd(ifname, role)
+		stopChan := make(chan bool)
+		err := linkcmd.CmdAdd(ifname, role, ipAddr, ethDev, stopChan)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%v: %v\n", prog, err)
 			os.Exit(1)

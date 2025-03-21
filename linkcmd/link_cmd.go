@@ -1,7 +1,6 @@
 package linkcmd
 
 import (
-	"fmt"
 	"net"
 	"sync"
 	"syscall"
@@ -43,7 +42,7 @@ func CmdDel(ifname string) error {
 	return nil
 }
 
-func CmdAdd(ifname string, role int) error {
+func CmdAdd(ifname string, role int, ipAddr string, ethDev string, stopChan chan bool) error {
 	var wg sync.WaitGroup
 	mux, err := nl.NewMux()
 	if err != nil {
@@ -67,7 +66,7 @@ func CmdAdd(ifname string, role int) error {
 
 	c := nl.NewClient(conn, mux)
 
-	laddr, err := net.ResolveUDPAddr("udp4", ":2152")
+	laddr, err := net.ResolveUDPAddr("udp4", ipAddr+":2152")
 	if err != nil {
 		return err
 	}
@@ -104,6 +103,10 @@ func CmdAdd(ifname string, role int) error {
 						Type:  gtp5gnl.IFLA_ROLE,
 						Value: nl.AttrU32(role),
 					},
+					{
+						Type:  gtp5gnl.IFLA_ETHERNET_N6_DEV,
+						Value: nl.AttrString(ethDev),
+					},
 				},
 			},
 		},
@@ -118,14 +121,7 @@ func CmdAdd(ifname string, role int) error {
 		return err
 	}
 
-	b := make([]byte, 96*1024)
-	for {
-		n, from, err := conn2.ReadFrom(b)
-		if err != nil {
-			break
-		}
-		fmt.Printf("received %v bytes from %v.\n", n, from)
-	}
+	<-stopChan
 
 	return nil
 }
